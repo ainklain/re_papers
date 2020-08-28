@@ -34,8 +34,6 @@ class LeNet_300_100(nn.Module):
         return x
 
 
-
-
 class LeNet5(nn.Module):
     def __init__(self, in_dim: int, out_dim: int):
         # in_dim = 28
