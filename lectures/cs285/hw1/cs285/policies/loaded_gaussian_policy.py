@@ -1,13 +1,14 @@
 import numpy as np
-import tensorflow as tf
+# import tensorflow as tf
+import torch 
+from torch.nn import functional as F
 from .base_policy import BasePolicy
 import pickle
 
-class Loaded_Gaussian_Policy(BasePolicy):
-    def __init__(self, sess, filename, **kwargs):
-        super().__init__(**kwargs)
 
-        self.sess = sess
+class Loaded_Gaussian_Policy(BasePolicy):
+    def __init__(self, filename, **kwargs):
+        super().__init__(**kwargs)
 
         with open(filename, 'rb') as f:
             data = pickle.loads(f.read())
@@ -24,16 +25,7 @@ class Loaded_Gaussian_Policy(BasePolicy):
 
     ##################################
 
-    def build_graph(self):
-        self.define_placeholders()
-        self.define_forward_pass()
-
-    ##################################
-
-    def define_placeholders(self):
-        self.obs_bo = tf.placeholder(tf.float32, [None, None])
-
-    def define_forward_pass(self):
+    def forward(self, obs):
 
         # Build the policy. First, observation normalization.
         assert list(self.policy_params['obsnorm'].keys()) == ['Standardizer']
@@ -41,7 +33,7 @@ class Loaded_Gaussian_Policy(BasePolicy):
         obsnorm_meansq = self.policy_params['obsnorm']['Standardizer']['meansq_1_D']
         obsnorm_stdev = np.sqrt(np.maximum(0, obsnorm_meansq - np.square(obsnorm_mean)))
         print('obs', obsnorm_mean.shape, obsnorm_stdev.shape)
-        normedobs_bo = (self.obs_bo - obsnorm_mean) / (obsnorm_stdev + 1e-6)
+        normedobs_bo = (obs - obsnorm_mean) / (obsnorm_stdev + 1e-6)
         curr_activations_bd = normedobs_bo
 
         # Hidden layers next
@@ -63,9 +55,9 @@ class Loaded_Gaussian_Policy(BasePolicy):
 
     def apply_nonlin(self, x):
         if self.nonlin_type == 'lrelu':
-            return lrelu(x, leak=.01)
+            return F.leaky_relu(x, negative_slope=0.01) 
         elif self.nonlin_type == 'tanh':
-            return tf.tanh(x)
+            return torch.tanh(x)
         else:
             raise NotImplementedError(self.nonlin_type)
 
@@ -81,5 +73,5 @@ class Loaded_Gaussian_Policy(BasePolicy):
             observation = obs
         else:
             observation = obs[None, :]
-        return self.sess.run(self.output_bo, feed_dict={self.obs_bo : observation})
+        return self.forward(observation)
 

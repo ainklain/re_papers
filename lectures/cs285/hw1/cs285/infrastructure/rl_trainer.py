@@ -9,7 +9,7 @@ import pybulletgym
 import os
 
 from cs285.infrastructure.utils import *
-from cs285.infrastructure.tf_utils import create_tf_session
+# from cs285.infrastructure.torch_utils import create_tf_session
 from cs285.infrastructure.logger import Logger
 
 # params for saving rollout videos to tensorboard
@@ -27,12 +27,14 @@ class RL_Trainer(object):
         # Get params, create logger, create TF session
         self.params = params
         self.logger = Logger(self.params['logdir'])
-        self.sess = create_tf_session(self.params['use_gpu'], which_gpu=self.params['which_gpu'])
+        # self.sess = create_tf_session(self.params['use_gpu'], which_gpu=self.params['which_gpu'])
 
         # Set random seeds
         seed = self.params['seed']
-        tf.set_random_seed(seed)
+        torch.manual_seed(seed)
         np.random.seed(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
 
         #############
         ## ENV
@@ -66,15 +68,8 @@ class RL_Trainer(object):
         #############
 
         agent_class = self.params['agent_class']
-        self.agent = agent_class(self.sess, self.env, self.params['agent_params'])
+        self.agent = agent_class(self.env, self.params['agent_params'])
 
-        #############
-        ## INIT VARS
-        #############
-
-        ## TODO initialize all of the TF variables (that were created by agent, etc.)
-        ## HINT: use global_variables_initializer
-        TODO
 
     def run_training_loop(self, n_iter, collect_policy, eval_policy,
                         initial_expertdata=None, relabel_with_expert=False,
