@@ -4,9 +4,21 @@ import numpy as np
 # import torch
 # import tensorflow as tf
 
+
+#######################
+## working directory 변경 (for console)
+#######################
+
+import os, sys
+cur_dir = os.getcwd()
+os.chdir(os.path.join(cur_dir, './lectures/cs285/hw1/'))
+sys.path.append(os.getcwd())
+
+
 from cs285.infrastructure.rl_trainer import RL_Trainer
 from cs285.agents.bc_agent import BCAgent
 from cs285.policies.loaded_gaussian_policy import Loaded_Gaussian_Policy
+
 
 class BC_Trainer(object):
 
@@ -30,7 +42,7 @@ class BC_Trainer(object):
         ################
         ## RL TRAINER
         ################
-
+        print(agent_params)
         self.rl_trainer = RL_Trainer(self.params) ## TODO: look in here and implement this
 
         #######################
@@ -38,7 +50,7 @@ class BC_Trainer(object):
         #######################
 
         print('Loading expert policy from...', self.params['expert_policy_file'])
-        self.loaded_expert_policy = Loaded_Gaussian_Policy(self.rl_trainer.sess, self.params['expert_policy_file'])
+        self.loaded_expert_policy = Loaded_Gaussian_Policy(self.params['expert_policy_file'])
         print('Done restoring expert policy...')
 
     def run_training_loop(self):
@@ -51,6 +63,63 @@ class BC_Trainer(object):
             relabel_with_expert=self.params['do_dagger'],
             expert_policy=self.loaded_expert_policy,
         )
+
+
+def main_console():
+    import easydict
+
+    args = easydict.EasyDict({
+        'expert_policy_file': 'cs285/policies/experts/Ant.pkl',
+        'expert_data': 'cs285/expert_data/expert_data_Ant-v2.pkl',
+        'env_name': 'Ant-v2',
+        'exp_name': 'test_bc_ant',
+        'do_dagger': False,
+        'ep_len': 0,
+        'num_agent_train_steps_per_iter': 1000,
+        'n_iter': 1,
+        'batch_size': 1000,
+        'eval_batch_size': 200,
+        'train_batch_size': 100,
+        'n_layers': 2,
+        'size': 60,
+        'learning_rate': 5e-3,
+        'video_log_freq': 5,
+        'scalar_log_freq': 1,
+        'use_gpu': True,
+        'which_gpu': 0,
+        'max_replay_buffer_size': 1000000,
+        'seed': 1
+    })
+    params = vars(args)
+
+    ##################################
+    ### CREATE DIRECTORY FOR LOGGING
+    ##################################
+
+    logdir_prefix = 'bc_'
+    if args.do_dagger:
+        logdir_prefix = 'dagger_'
+        assert args.n_iter>1, ('DAGGER needs more than 1 iteration (n_iter>1) of training, to iteratively query the expert and train (after 1st warmstarting from behavior cloning).')
+    else:
+        assert args.n_iter==1, ('Vanilla behavior cloning collects expert data just once (n_iter=1)')
+
+    ## directory for logging
+    data_path = os.path.join(os.getcwd(), './cs285/data')
+    if not (os.path.exists(data_path)):
+        os.makedirs(data_path)
+    logdir = logdir_prefix + args.exp_name + '_' + args.env_name + '_' + time.strftime("%Y-%m-%Y_%H-%M-%S")
+    logdir = os.path.join(data_path, logdir)
+    params['logdir'] = logdir
+    if not(os.path.exists(logdir)):
+        os.makedirs(logdir)
+
+
+    ###################
+    ### RUN TRAINING
+    ###################
+
+    trainer = BC_Trainer(params)
+    trainer.run_training_loop()
 
 
 def main():
@@ -116,5 +185,5 @@ def main():
     trainer = BC_Trainer(params)
     trainer.run_training_loop()
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()

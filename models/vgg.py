@@ -2,11 +2,14 @@
 import torch
 from torch import nn
 
+
 def vgg11(in_dim, out_dim):
     return VGG(11, in_dim, out_dim)
 
+
 def vgg13(in_dim,out_dim):
     return VGG(13, in_dim, out_dim)
+
 
 def vgg16(in_dim,out_dim):
     return VGG(16, in_dim, out_dim)

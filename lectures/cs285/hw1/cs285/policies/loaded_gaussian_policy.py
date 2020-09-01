@@ -21,7 +21,7 @@ class Loaded_Gaussian_Policy(BasePolicy):
 
         assert set(self.policy_params.keys()) == {'logstdevs_1_Da', 'hidden', 'obsnorm', 'out'}
 
-        self.build_graph()
+        # self.build_graph()
 
     ##################################
 

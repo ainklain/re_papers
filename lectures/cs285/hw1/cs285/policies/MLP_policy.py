@@ -33,9 +33,13 @@ class MLPPolicy(BasePolicy):
     def build_graph(self):
         mean = MLP(self.ob_dim, output_size=self.ac_dim, n_layers=self.n_layers, size=self.size)
         logstd = torch.zeros(self.ac_dim, dtype=torch.float32, requires_grad=True)
-        self.parameters = torch.nn.ParameterDict({'mean':mean, 'logstd':logstd})
+        self.parameters = {'mean':mean, 'logstd':nn.Parameter(logstd)}
         
-        self.optimizer = torch.optim.Adam(self.parameters.parameters, self.learning_rate)
+        self.optimizer = torch.optim.Adam([{
+            'params': self.parameters['mean'].parameters(), 
+            'params': self.parameters['logstd']}
+            ], 
+            self.learning_rate)
         
     ##################################
 
@@ -75,9 +79,10 @@ class MLPPolicy(BasePolicy):
         else:
             observation = obs[None]
 
-        mean, logstd = self.parameters
         with torch.set_grad_enabled(self.training):
-            ac = mean(observation) + torch.exp(logstd) * torch.randn_like(mean)
+            mean = self.parameters['mean'](torch.tensor(observation, dtype=torch.float32))
+            logstd = self.parameters['logstd']
+            ac = mean + torch.exp(logstd) * torch.randn_like(mean)
         
         return ac
 
@@ -95,17 +100,6 @@ class MLPPolicySL(MLPPolicy):
         which is trained using supervised learning.
         The relevant functions to define are included below.
     """
-
-    def define_placeholders(self):
-        # placeholder for observations
-        self.observations_pl = tf.placeholder(shape=[None, self.ob_dim], name="ob", dtype=tf.float32)
-
-        # placeholder for actions
-        self.actions_pl = tf.placeholder(shape=[None, self.ac_dim], name="ac", dtype=tf.float32)
-
-        if self.training:
-            self.acs_labels_na = tf.placeholder(shape=[None, self.ac_dim], name="labels", dtype=tf.float32)
-
 
     def update(self, observations, actions):
 

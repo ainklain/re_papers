@@ -5,7 +5,9 @@ import numpy as np
 # import tensorflow as tf
 import torch
 import gym
-import pybulletgym
+import pybullet_envs
+import pybullet as p
+# import pybulletgym
 import os
 
 from cs285.infrastructure.utils import *
@@ -41,8 +43,16 @@ class RL_Trainer(object):
         #############
 
         # Make the gym environment
-        self.env = gym.make(self.params['env_name'])
-        self.env.seed(seed)
+        sim_name = 'pybullet'
+        if sim_name == 'mujoco':
+            self.env = gym.make(self.params['env_name'])
+            self.env.seed(seed)
+        elif sim_name == 'pybullet':
+            p.connect(p.DIRECT)
+            env_name = self.params['env_name'].split('-')[0] + "BulletEnv-v0"
+            self.env = gym.make(env_name)
+            self.env.seed(seed)
+            self.env.render()
 
         # Maximum length for episodes
         self.params['ep_len'] = self.params['ep_len'] or self.env.spec.max_episode_steps
@@ -111,7 +121,7 @@ class RL_Trainer(object):
             self.total_envsteps += envsteps_this_batch
 
             # relabel the collected obs with actions from a provided expert policy
-            if relabel_with_expert and itr>=start_relabel_with_expert:
+            if relabel_with_expert and itr >= start_relabel_with_expert:
                 paths = self.do_relabel_with_expert(expert_policy, paths) ## TODO implement this function below
 
             # add collected data to replay buffer
@@ -154,19 +164,26 @@ class RL_Trainer(object):
 
                 # collect data, batch_size is the number of transitions you want to collect.
 
-        # TODO collect data to be used for training
-        # HINT1: use sample_trajectories from utils
-        # HINT2: you want each of these collected rollouts to be of length self.params['ep_len']
-        print("\nCollecting data to be used for training...")
-        paths, envsteps_this_batch = TODO
+        if itr == 0:
+            with open(load_initial_expertdata, 'rb') as f:
+                paths = pickle.load(f)
 
-        # collect more rollouts with the same policy, to be saved as videos in tensorboard
-        # note: here, we collect MAX_NVIDEO rollouts, each of length MAX_VIDEO_LEN
-        train_video_paths = None
-        if self.log_video:
-            print('\nCollecting train rollouts to be used for saving videos...')
-            ## TODO look in utils and implement sample_n_trajectories
-            train_video_paths = sample_n_trajectories(self.env, collect_policy, MAX_NVIDEO, MAX_VIDEO_LEN, True)
+            return paths, 0, None
+            
+        else:
+            # TODO collect data to be used for training
+            # HINT1: use sample_trajectories from utils
+            # HINT2: you want each of these collected rollouts to be of length self.params['ep_len']
+            print("\nCollecting data to be used for training...")
+            paths, envsteps_this_batch = sample_trajectories(self.env, collect_policy, self.params['ep_len'], batch_size, self.log_video)
+
+            # collect more rollouts with the same policy, to be saved as videos in tensorboard
+            # note: here, we collect MAX_NVIDEO rollouts, each of length MAX_VIDEO_LEN
+            train_video_paths = None
+            if self.log_video:
+                print('\nCollecting train rollouts to be used for saving videos...')
+                ## TODO look in utils and implement sample_n_trajectories
+                train_video_paths = sample_n_trajectories(self.env, collect_policy, MAX_NVIDEO, MAX_VIDEO_LEN, True)
 
         return paths, envsteps_this_batch, train_video_paths
 

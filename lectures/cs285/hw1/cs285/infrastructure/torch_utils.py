@@ -7,6 +7,7 @@ import os
 
 class MLP(nn.Module):
     def __init__(self, input_size, output_size, n_layers, size, activation=torch.tanh, output_activation=None):
+        super(MLP, self).__init__()
         self.activation = activation
         self.output_activation = output_activation
         self.layers = nn.ModuleList()
@@ -21,7 +22,10 @@ class MLP(nn.Module):
         for layer in self.layers:
             x = self.activation(layer(x))
 
-        return self.output_activation(x)
+        if not self.output_activation:
+            return x
+        else:
+            return self.output_activation(x)
 
 
 ############################################
