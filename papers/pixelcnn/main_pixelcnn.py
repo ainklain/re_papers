@@ -80,7 +80,7 @@ def main():
         for data, _ in train_loader:
             data = data.to('cuda')
             pred = model(data)
-            loss = loss_func(pred, data.squeeze().long())
+            loss = loss_func(pred, data.squeeze().long() * 255)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -90,7 +90,7 @@ def main():
         for i in range(28):
             for j in range(28):
                 out = model(sample)
-                probs = torch.softmax(out[:, :, i, j], 0).data
+                probs = torch.softmax(out[:, :, i, j], -1).data
                 sample[:, :, i, j] = torch.multinomial(probs, 1).float() / 255.
         utils.save_image(sample, 'sample_{}.png'.format(epoch), nrow=12, padding=0)
 
